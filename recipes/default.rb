@@ -214,8 +214,20 @@ node['apache']['default_modules'].each do |mod|
   include_recipe "apache2::#{module_recipe_name}"
 end
 
+if platform?("fedora") and node['platform_version'].to_i >= 18
+  apache_module "mpm_prefork"
+  apache_module "unixd"
+  apache_module "access_compat"
+  apache_module "filter"
+end
+
 apache_site "default" do
   enable !!node['apache']['default_site_enabled']
+end
+
+file "#{node['apache']['dir']}/sites-enabled/empty" do
+  content ""
+  mode 0644
 end
 
 service "apache2" do

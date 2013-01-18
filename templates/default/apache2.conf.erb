@@ -12,6 +12,8 @@ ServerRoot "<%= node['apache']['dir'] %>"
 LockFile /var/lock/apache2/accept.lock
 <% elsif %w{freebsd}.include?(node['platform_family']) -%>
 LockFile /var/log/accept.lock
+<% elsif %w{fedora}.include?(node['platform_family']) and node['platform_version'].to_i >= 18 -%>
+Mutex default
 <% else %>
 LockFile logs/accept.lock
 <% end -%>
@@ -231,7 +233,7 @@ LogFormat "%{User-agent}i" agent
 
 
 # Include generic snippets of statements
-Include <%= node['apache']['dir'] %>/conf.d/
+Include <%= node['apache']['dir'] %>/conf.d/*
 
 # Include the virtual host configurations:
-Include <%= node['apache']['dir'] %>/sites-enabled/
+Include <%= node['apache']['dir'] %>/sites-enabled/*

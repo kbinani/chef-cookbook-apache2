@@ -139,10 +139,15 @@ default['apache']['worker']['maxrequestsperchild'] = 0
 
 # Default modules to enable via include_recipe
 
-default['apache']['default_modules'] = %w{
-  status alias auth_basic authn_file authz_default authz_groupfile authz_host authz_user autoindex
-  dir env mime negotiation setenvif
-}
+if platform == "fedora" and platform_version.to_i >= 18 then
+  default['apache']['default_modules'] =
+    %w{status alias auth_basic authn_file authz_groupfile authz_host authz_user autoindex
+      dir env mime negotiation setenvif}
+else
+  default['apache']['default_modules'] =
+    %w{status alias auth_basic authn_file authz_default authz_groupfile authz_host authz_user autoindex
+      dir env mime negotiation setenvif}
+end
 
 %w{ log_config logio }.each do |log_mod|
   default['apache']['default_modules'] << log_mod if ["rhel", "fedora", "suse", "arch", "freebsd"].include?(node['platform_family'])
