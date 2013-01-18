@@ -18,23 +18,25 @@
 #
 
 if node['platform_family'] == "fedora" and node['platform_version'].to_i >= 18 then
-  %w{gcc apr-devel apr-util-devel openldap-devel db4-devel expat-devel pcre-devel openssl-devel distcache-devel}.each {|pkg|
+  %w{gcc apr-devel apr-util-devel openldap-devel db4-devel expat-devel pcre-devel openssl-devel distcache-devel rpm-build libtool mailcap}.each { |pkg|
     package pkg
+  }
+  %w{httpd httpd-devel}.each { |pkg|
+    package pkg do
+      action :remove
+    end
   }
   ruby_block "build rpm from source" do
     block do
       base_url = "http://archive.apache.org/dist/httpd"
       major = 2
       minor = 2
-      release = `
-        curl -L #{base_url} 2>/dev/null \
-          | grep "httpd-#{major}\.#{minor}" \
-          | sed "s:^.*<a href=\"\(httpd-#{major}\.#{minor}\.[0-9]*\.tar\.gz\)\".*$:\1:g" \
-          | grep "^httpd-#{major}\.#{minor}\.[0-9]*\.tar\.gz$" \
-          | sed 's:^httpd-\([0-9.]*\)\.tar\.gz$:\1:g' \
-          | cut -f3 -d'.' \
-          | sort -nr \
-          | head -1`.strip.to_i
+      regexp = Regexp.new("<a href=\\\"httpd-#{major}\.#{minor}\\.([0-9]*)\\.tar\\.gz\\\">")
+      release = `curl -L #{base_url} 2>/dev/null`.lines.each.select { |line|
+        line =~ regexp
+      }.map { |line|
+        line[regexp, 1].to_i
+      }.sort.last
       version = "#{major}.#{minor}.#{release}"
       cache_path = Chef::Config[:file_cache_path]
       `cd #{cache_path} && wget #{base_url}/httpd-#{version}.tar.gz -O httpd-#{version}.tar.gz`
@@ -44,11 +46,13 @@ if node['platform_family'] == "fedora" and node['platform_version'].to_i >= 18 t
         `mkdir -p #{buildroot}/#{dir}`
       }
       `cat #{cache_path}/httpd-#{version}/httpd.spec \
-         | sed 's/Prereq: openssl, dev, \/bin\/cat/Prereq: openssl, \/bin\/cat/g' \
+         | sed 's/Prereq: openssl, dev, \\/bin\\/cat/Prereq: openssl, \\/bin\\/cat/g' \
          > #{buildroot}/SPECS/httpd.spec`
       `cp #{cache_path}/httpd-#{version}.tar.gz #{buildroot}/SOURCES/`
-      `which rpmbuild >/dev/null 2>&1 || yum install -y rpm-build`
       `rpmbuild -bb #{buildroot}/SPECS/httpd.spec`
+      `rpm -i #{buildroot}/RPMS/#{node['kernel']['machine']}/httpd-#{version}*.rpm`
+      `rpm -i #{buildroot}/RPMS/#{node['kernel']['machine']}/httpd-devel-#{version}*.rpm`
+      `mkdir -p $(dirname #{node['apache']['pid_file']})`
     end
   end
 else
