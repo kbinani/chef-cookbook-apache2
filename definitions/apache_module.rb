@@ -23,6 +23,7 @@ define :apache_module, :enable => true, :conf => false do
   params[:filename] = params[:filename] || "mod_#{params[:name]}.so"
   params[:module_path] = params[:module_path] || "#{node['apache']['libexecdir']}/#{params[:filename]}"
   params[:conf_name] = params[:conf_name] || params[:name]
+  params[:module_name] = params[:module_name] || "#{params[:name]}_module"
 
   if params[:conf]
     apache_conf params[:conf_name]
@@ -30,7 +31,7 @@ define :apache_module, :enable => true, :conf => false do
 
   if platform_family?("rhel", "fedora", "arch", "suse", "freebsd")
     file "#{node['apache']['dir']}/mods-available/#{params[:conf_name]}.load" do
-      content "LoadModule #{params[:name]}_module #{params[:module_path]}\n"
+      content "LoadModule #{params[:module_name]} #{params[:module_path]}\n"
       mode 0644
     end
   end
